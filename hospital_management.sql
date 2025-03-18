@@ -63,25 +63,26 @@ CREATE TABLE Doctors (
     specialization VARCHAR(100),
     phone_number VARCHAR(20),
     email VARCHAR(100),
-    consultation_fee DECIMAL(10,2)
+    consultation_fee DECIMAL(10,2),
+    years_of_experience INT
 );
 
-INSERT INTO Doctors (name, specialization, phone_number, email, consultation_fee) VALUES
-('Dr. Alice Johnson', 'Cardiology', '1112223333', 'alice@example.com', 1000.00),
-('Dr. Bob Williams', 'Neurology', '4445556666', 'bob@example.com', 1500.00),
-('Dr. Charlie Brown', 'Dermatology', '7778889999', 'charlie@example.com', 1200.00),
-('Dr. Diane White', 'Pediatrics', '2223334444', 'diane@example.com', 90.00),
-('Dr. Eric Black', 'Orthopedics', '5556667777', 'eric@example.com', 1300.00),
-('Dr. Fiona Green', 'ENT', '8889990000', 'fiona@example.com', 110.00),
-('Dr. George Adams', 'Oncology', '1114447777', 'george@example.com', 2000.00),
-('Dr. Hannah Scott', 'Psychiatry', '2225558888', 'hannah@example.com', 160.00),
-('Dr. Ian Roberts', 'Gastroenterology', '3336669999', 'ian@example.com', 1400.00),
-('Dr. Julia Moore', 'Urology', '4447770000', 'julia@example.com', 125.00),
-('Dr. Kevin Murphy', 'Endocrinology', '5558881111', 'kevin@example.com', 135.00),
-('Dr. Laura Jackson', 'Gynecology', '6669992222', 'laura@example.com', 145.00),
-('Dr. Michael Thompson', 'Pulmonology', '7770003333', 'michael.t@example.com', 155.00),
-('Dr. Nancy Lewis', 'Rheumatology', '8881114444', 'nancy@example.com', 115.00),
-('Dr. Oliver Nelson', 'Nephrology', '9992225555', 'oliver@example.com', 170.00);
+INSERT INTO Doctors (name, specialization, phone_number, email, consultation_fee,years_of_experience) VALUES
+('Dr. Alice Johnson', 'Cardiology', '1112223333', 'alice@example.com', 1000.00,20),
+('Dr. Bob Williams', 'Neurology', '4445556666', 'bob@example.com', 1500.00,10),
+('Dr. Charlie Brown', 'Dermatology', '7778889999', 'charlie@example.com', 1200.00,5),
+('Dr. Diane White', 'Pediatrics', '2223334444', 'diane@example.com', 90.00,18),
+('Dr. Eric Black', 'Orthopedics', '5556667777', 'eric@example.com', 1300.00,7),
+('Dr. Fiona Green', 'ENT', '8889990000', 'fiona@example.com', 110.00,3),
+('Dr. George Adams', 'Oncology', '1114447777', 'george@example.com', 2000.00,12),
+('Dr. Hannah Scott', 'Psychiatry', '2225558888', 'hannah@example.com', 160.00,22),
+('Dr. Ian Roberts', 'Gastroenterology', '3336669999', 'ian@example.com', 1400.00,9),
+('Dr. Julia Moore', 'Urology', '4447770000', 'julia@example.com', 125.00,4),
+('Dr. Kevin Murphy', 'Endocrinology', '5558881111', 'kevin@example.com', 135.00,16),
+('Dr. Laura Jackson', 'Gynecology', '6669992222', 'laura@example.com', 145.00,6),
+('Dr. Michael Thompson', 'Pulmonology', '7770003333', 'michael.t@example.com', 155.00,14),
+('Dr. Nancy Lewis', 'Rheumatology', '8881114444', 'nancy@example.com', 115.00,8),
+('Dr. Oliver Nelson', 'Nephrology', '9992225555', 'oliver@example.com', 170.00,25);
 
 --(Doctor_department_table)
 
@@ -246,7 +247,15 @@ FROM Medical_Records
 GROUP BY doctor_id;
 
 --• Show total revenue generated per department.
-SELECT SUM()
+SELECT 
+    dep.department_name,
+    SUM(b.amount) AS total_revenue
+FROM Billing b
+JOIN Appointments a ON b.appointment_id = a.appointment_id
+JOIN Doctors d ON a.doctor_id = d.doctor_id
+JOIN Doctor_Department dd ON d.doctor_id = dd.doctor_id
+JOIN Departments dep ON dd.department_id = dep.department_id
+GROUP BY dep.department_name;
 
 --5. Use Aggregate Functions (SUM, AVG, MAX, MIN, COUNT) (High Weightage)
 --• Find the total revenue collected.
@@ -296,7 +305,17 @@ ON Appointments.patient_id = Patients.patient_id
 WHERE Appointments.appointment_id IS NULL;
 
 --8. Use Subqueries (High Weightage)
---• Find doctors who have handled more than 50 patients.
+--• Find doctors who have handled more than 2 patients.
+SELECT 
+    Medical_Records.doctor_id, 
+    Doctors.name AS doctor_name, 
+    COUNT(Medical_Records.patient_id) AS total_patients_handled
+FROM Medical_Records
+JOIN Doctors ON Medical_Records.doctor_id = Doctors.doctor_id
+GROUP BY Medical_Records.doctor_id, Doctors.name
+HAVING COUNT(Medical_Records.patient_id) > 2;
+
+
 --• Identify the patient who has spent the most on treatments.
 --• Get appointments where the doctor specializes in Dermatology.
 --9. Implement Date & Time Functions (High Weightage)
@@ -307,8 +326,6 @@ GROUP BY month;
 
 --• Calculate the total hospital stay duration by subtracting admission_date from
 --discharge_date.
-
-
 --• Format treatment_date as DD-MM-YYYY.
 SELECT
 *,
@@ -347,7 +364,14 @@ FROM Medical_Records
 GROUP BY doctor_id;
 
 --• Show the cumulative revenue per month.
-
+SELECT 
+    DATE_FORMAT(payment_date, "%Y-%m") AS month,
+    SUM(amount) AS monthly_revenue,
+    SUM(SUM(amount)) OVER (ORDER BY DATE_FORMAT(payment_date, "%Y-%m")) AS cumulative_revenue
+FROM Billing
+WHERE payment_status = "Paid"
+GROUP BY month
+ORDER BY month;
 
 --• Display the running total of appointments made.
 SELECT 
@@ -378,3 +402,11 @@ GROUP BY patient_id;
 --"Senior" if they have more than 15 years of experience.
 --• "Mid-Level" if they have 5-15 years.
 --"Junior" otherwise.
+SELECT
+    *,
+    CASE
+        WHEN years_of_experience > 15 THEN "SENIOR"
+        WHEN years_of_experience > 5 AND years_of_experience <=15 THEN "MID-LEVEL"
+        ELSE "JUNIOR"
+    END AS experience_grade
+FROM Doctors;
